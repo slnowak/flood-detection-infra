@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "namespaceName": {
-      "value": "flood"
+      "value": "flood-detection-ns"
     },
     "eventHubName": {
       "value": "flood-sensors-hub"
@@ -12,7 +12,7 @@
       "value": "flood-events-listener"
     },
     "partitionCount": {
-      "value": "2"
+      "value": 2
     }
   }
 }
