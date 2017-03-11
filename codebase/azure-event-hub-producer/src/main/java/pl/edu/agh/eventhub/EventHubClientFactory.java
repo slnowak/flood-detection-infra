@@ -4,7 +4,7 @@ import com.microsoft.azure.eventhubs.EventHubClient;
 import com.microsoft.azure.servicebus.ConnectionStringBuilder;
 
 class EventHubClientFactory {
-    final static String namespaceName = "flood";
+    final static String namespaceName = "flood-detection-ns";
     final static String eventHubName = "flood-sensors-hub";
     final static String sasKeyName = "RootManageSharedAccessKey";
     final static String sasKey = "CHANGE_ME";
