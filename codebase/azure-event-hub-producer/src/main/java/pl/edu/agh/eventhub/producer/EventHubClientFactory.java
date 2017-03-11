@@ -2,15 +2,17 @@ package pl.edu.agh.eventhub.producer;
 
 import com.microsoft.azure.eventhubs.EventHubClient;
 import com.microsoft.azure.servicebus.ConnectionStringBuilder;
+import pl.edu.agh.eventhub.Configuration;
 
 public class EventHubClientFactory {
-    final static String namespaceName = "flood-detection-ns";
-    final static String eventHubName = "flood-sensors-hub";
-    final static String sasKeyName = "RootManageSharedAccessKey";
-    final static String sasKey = "CHANGE_ME";
 
     public static EventHubClient create() {
-        final ConnectionStringBuilder connStr = new ConnectionStringBuilder(namespaceName, eventHubName, sasKeyName, sasKey);
+        final ConnectionStringBuilder connStr = new ConnectionStringBuilder(
+                Configuration.getString("eventhub.namespacename"),
+                Configuration.getString("eventhub.eventhubname"),
+                Configuration.getString("eventhub.saskeyname"),
+                Configuration.getString("eventhub.saskey")
+        );
 
         try {
             return EventHubClient.createFromConnectionString(connStr.toString()).get();

@@ -2,6 +2,7 @@
 .idea/
 *.iml
 
+src/main/resources/app-config.properties
 *.iws
 /out/
 .idea_modules/
