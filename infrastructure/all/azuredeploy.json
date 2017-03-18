@@ -1,0 +1,192 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "dummyParam": {
+      "type": "string",
+      "metadata": {
+        "description": "This is only to satisfy azure deploy script..."
+      },
+      "defaultValue": ""
+    }
+  },
+  "variables": {
+    "location": "[resourceGroup().location]",
+    "sensorDataEventHub": {
+      "name": "flood-sensors-hub",
+      "namespace": "flood-detection-ns",
+      "consumerGroup": "flood-events-listener",
+      "partitionCount": 2,
+      "keyName": "RootManageSharedAccessKey"
+    },
+    "anomalyDataEventHub": {
+      "name": "anomaly-data-hub",
+      "eventHubName": "anomaly-data-hub",
+      "namespace": "anomaly-detection-ns",
+      "consumerGroup": "anomaly-events-listener",
+      "partitionCount": 2,
+      "keyName": "RootManageSharedAccessKey"
+    },
+    "anomalyDetectionStreamingJob": {
+      "name": "anomaly-detection",
+      "input": {
+        "name": "sensor-events",
+        "eventHubName": "[variables('sensorDataEventHub').name]",
+        "namespace": "[variables('sensorDataEventHub').namespace]",
+        "consumerGroup": "[variables('sensorDataEventHub').consumerGroup]",
+        "policyName": "[variables('sensorDataEventHub').keyName]"
+      },
+      "transformation": {
+        "name": "detect-anomalies",
+        "streamingUnits": 1,
+        "query": "SELECT \r\n\tSystem.Timestamp AS outputTime,\r\n\tsensor,\r\n\tAVG(value) as averageWaterLevel\r\nINTO\r\n\t\"anomaly-events\"\r\nFROM\r\n\t\"sensor-events\"\r\nGROUP BY TumblingWindow(minute, 30), sensor\r\n\tHAVING AVG(value) > 3"
+      },
+      "output": {
+        "name": "anomaly-events",
+        "eventHubName": "[variables('anomalyDataEventHub').name]",
+        "namespace": "[variables('anomalyDataEventHub').namespace]",
+        "consumerGroup": "[variables('anomalyDataEventHub').consumerGroup]",
+        "policyName": "[variables('anomalyDataEventHub').keyName]"
+      }
+    }
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-08-01",
+      "name": "[variables('sensorDataEventHub').namespace]",
+      "type": "Microsoft.EventHub/Namespaces",
+      "location": "[variables('location')]",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard"
+      },
+      "resources": [
+        {
+          "apiVersion": "2015-08-01",
+          "name": "[variables('sensorDataEventHub').name]",
+          "type": "EventHubs",
+          "dependsOn": [
+            "[concat('Microsoft.EventHub/namespaces/', variables('sensorDataEventHub').namespace)]"
+          ],
+          "properties": {
+            "path": "[variables('sensorDataEventHub').name]",
+            "PartitionCount": "[variables('sensorDataEventHub').partitionCount]"
+          },
+          "resources": [
+            {
+              "apiVersion": "2015-08-01",
+              "name": "[variables('sensorDataEventHub').consumerGroup]",
+              "type": "ConsumerGroups",
+              "dependsOn": [
+                "[variables('sensorDataEventHub').name]"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "apiVersion": "2015-08-01",
+      "name": "[variables('anomalyDataEventHub').namespace]",
+      "type": "Microsoft.EventHub/Namespaces",
+      "location": "[variables('location')]",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard"
+      },
+      "resources": [
+        {
+          "apiVersion": "2015-08-01",
+          "name": "[variables('anomalyDataEventHub').name]",
+          "type": "EventHubs",
+          "dependsOn": [
+            "[concat('Microsoft.EventHub/namespaces/', variables('anomalyDataEventHub').namespace)]"
+          ],
+          "properties": {
+            "path": "[variables('anomalyDataEventHub').name]",
+            "PartitionCount": "[variables('anomalyDataEventHub').partitionCount]"
+          },
+          "resources": [
+            {
+              "apiVersion": "2015-08-01",
+              "name": "[variables('anomalyDataEventHub').consumerGroup]",
+              "type": "ConsumerGroups",
+              "dependsOn": [
+                "[variables('anomalyDataEventHub').name]"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "apiVersion": "2015-09-01",
+      "type": "Microsoft.StreamAnalytics/StreamingJobs",
+      "name": "[variables('anomalyDetectionStreamingJob').name]",
+      "location": "[variables('location')]",
+      "properties": {
+        "sku": {
+          "name": "Standard"
+        },
+        "inputs": [
+          {
+            "name": "[variables('anomalyDetectionStreamingJob').input.name]",
+            "properties": {
+              "type": "stream",
+              "serialization": {
+                "type": "JSON",
+                "properties": {
+                  "encoding": "UTF8"
+                }
+              },
+              "datasource": {
+                "type": "Microsoft.ServiceBus/EventHub",
+                "properties": {
+                  "eventHubName": "[variables('anomalyDetectionStreamingJob').input.eventHubName]",
+                  "serviceBusNamespace": "[variables('anomalyDetectionStreamingJob').input.namespace]",
+                  "consumerGroupName": "[variables('anomalyDetectionStreamingJob').input.consumerGroup]",
+                  "sharedAccessPolicyName": "[variables('anomalyDetectionStreamingJob').input.policyName]",
+                  "sharedAccessPolicyKey": "[listKeys(resourceId('Microsoft.Eventhub/namespaces/authorizationRules', variables('anomalyDetectionStreamingJob').input.namespace, variables('anomalyDetectionStreamingJob').input.policyName), '2014-09-01').primaryKey]"
+                }
+              }
+            }
+          }
+        ],
+        "transformation": {
+          "name": "[variables('anomalyDetectionStreamingJob').transformation.name]",
+          "properties": {
+            "streamingUnits": "[variables('anomalyDetectionStreamingJob').transformation.streamingUnits]",
+            "query": "[variables('anomalyDetectionStreamingJob').transformation.query]"
+          }
+        },
+        "outputs": [
+          {
+            "name": "[variables('anomalyDetectionStreamingJob').output.name]",
+            "properties": {
+              "type": "stream",
+              "serialization": {
+                "type": "JSON",
+                "properties": {
+                  "encoding": "UTF8"
+                }
+              },
+              "datasource": {
+                "type": "Microsoft.ServiceBus/EventHub",
+                "properties": {
+                  "eventHubName": "[variables('anomalyDetectionStreamingJob').output.eventHubName]",
+                  "serviceBusNamespace": "[variables('anomalyDetectionStreamingJob').output.namespace]",
+                  "sharedAccessPolicyName": "[variables('anomalyDetectionStreamingJob').output.policyName]",
+                  "sharedAccessPolicyKey": "[listKeys(resourceId('Microsoft.Eventhub/namespaces/authorizationRules', variables('anomalyDetectionStreamingJob').output.namespace, variables('anomalyDetectionStreamingJob').output.policyName), '2014-09-01').primaryKey]"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', variables('anomalyDetectionStreamingJob').input.namespace)]",
+        "[resourceId('Microsoft.EventHub/namespaces', variables('anomalyDetectionStreamingJob').output.namespace)]"
+      ]
+    }
+  ]
+}
