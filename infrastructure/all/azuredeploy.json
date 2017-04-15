@@ -2,10 +2,17 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "appName": {
+    "functionContainerName": {
       "type": "string",
       "metadata": {
         "description": "The name of the function app that you wish to create."
+      }
+    },
+    "functionName": {
+      "type": "string",
+      "defaultValue": "httpJs",
+      "metadata": {
+        "description": "The name of the function."
       }
     },
     "storageAccountType": {
@@ -61,8 +68,8 @@
         "policyName": "[variables('anomalyDataEventHub').keyName]"
       }
     },
-    "functionAppName": "[parameters('appName')]",
-    "hostingPlanName": "[parameters('appName')]",
+    "functionContainerName": "[parameters('functionContainerName')]",
+    "hostingPlanName": "[parameters('functionContainerName')]",
     "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'azfunctions')]",
     "storageAccountid": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]"
   },
@@ -227,7 +234,7 @@
     {
       "apiVersion": "2015-08-01",
       "type": "Microsoft.Web/sites",
-      "name": "[variables('functionAppName')]",
+      "name": "[variables('functionContainerName')]",
       "location": "[resourceGroup().location]",
       "kind": "functionapp",
       "dependsOn": [
@@ -252,7 +259,7 @@
             },
             {
               "name": "WEBSITE_CONTENTSHARE",
-              "value": "[toLower(variables('functionAppName'))]"
+              "value": "[toLower(variables('functionContainerName'))]"
             },
             {
               "name": "FUNCTIONS_EXTENSION_VERSION",
@@ -265,6 +272,29 @@
           ]
         }
       }
+    },
+    {
+      "apiVersion": "2015-08-01",
+      "name": "[concat(parameters('functionContainerName'),'/', parameters('functionName'))]",
+      "type": "Microsoft.Web/sites/functions",
+      "properties": {
+        "config": {
+          "bindings": [{
+            "direction": "in",
+            "type": "eventHubTrigger",
+            "name": "myEventHubMessage",
+            "path": "[variables('anomalyDataEventHub').name]",
+            "consumerGroup": "[variables('anomalyDataEventHub').consumerGroup]",
+            "connection": ""
+          }]
+        },
+        "files": {
+          "index.js": "module.exports = function (context, myQueueItem) { context.log('JavaScript queue trigger function processed work item', myQueueItem); context.done(); };"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('functionContainerName'))]"
+      ]
     }
   ]
 }
