@@ -15,7 +15,8 @@
     "jobQueue": {
       "name": "job-queue-hub",
       "namespace": "job-queue-ns",
-      "consumerGroup": "worker",
+      "lambdaConsumerGroup": "lambda-worker",
+      "vmConsumerGroup": "vm-worker",
       "partitionCount": 2,
       "policyName": "RootManageSharedAccessKey"
     },
@@ -54,7 +55,15 @@
           "resources": [
             {
               "apiVersion": "2015-08-01",
-              "name": "[variables('jobQueue').consumerGroup]",
+              "name": "[variables('jobQueue').lambdaConsumerGroup]",
+              "type": "ConsumerGroups",
+              "dependsOn": [
+                "[variables('jobQueue').name]"
+              ]
+            },
+            {
+              "apiVersion": "2015-08-01",
+              "name": "[variables('jobQueue').lambdaConsumerGroup]",
               "type": "ConsumerGroups",
               "dependsOn": [
                 "[variables('jobQueue').name]"
@@ -143,7 +152,7 @@
               "type": "eventHubTrigger",
               "name": "eventHubBinding",
               "path": "[variables('jobQueue').name]",
-              "consumerGroup": "[variables('jobQueue').consumerGroup]",
+              "consumerGroup": "[variables('jobQueue').lambdaConsumerGroup]",
               "connection": "eventHubConnection"
             }
           ]
