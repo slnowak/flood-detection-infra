@@ -3,10 +3,10 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "functionContainerName": {
-      "value": "az-functons-playground"
+      "value": "lambda-workers"
     },
     "functionName": {
-      "value": "httpJs"
+      "value": "eventhub-lambda-worker"
     }
   }
 }

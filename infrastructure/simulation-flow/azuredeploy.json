@@ -268,6 +268,10 @@
             {
               "name": "WEBSITE_NODE_DEFAULT_VERSION",
               "value": "6.5.0"
+            },
+            {
+              "name": "eventHubConnection",
+              "value": "[listKeys(resourceId('Microsoft.Eventhub/namespaces/authorizationRules', variables('anomalyDataEventHub').namespace, variables('anomalyDataEventHub').keyName), '2014-09-01').primaryConnectionString]"
             }
           ]
         }
@@ -285,7 +289,7 @@
             "name": "myEventHubMessage",
             "path": "[variables('anomalyDataEventHub').name]",
             "consumerGroup": "[variables('anomalyDataEventHub').consumerGroup]",
-            "connection": ""
+            "connection": "eventHubConnection"
           }]
         },
         "files": {
