@@ -27,7 +27,9 @@
       "storageAccountName": "[variables('storageAccountName')]",
       "storageAccountId": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
       "storageAccountType": "Standard_LRS",
-      "hostingPlanName": "function-workers"
+      "hostingPlanName": "function-workers",
+      "repoUrl": "https://github.com/slnowak/flood-detection-worker.git",
+      "branch": "azure-function"
     }
   },
   "resources": [
@@ -63,7 +65,7 @@
             },
             {
               "apiVersion": "2015-08-01",
-              "name": "[variables('jobQueue').lambdaConsumerGroup]",
+              "name": "[variables('jobQueue').vmConsumerGroup]",
               "type": "ConsumerGroups",
               "dependsOn": [
                 "[variables('jobQueue').name]"
@@ -138,31 +140,21 @@
             }
           ]
         }
-      }
-    },
-    {
-      "apiVersion": "2015-08-01",
-      "name": "[concat(variables('workerFunction').containerName,'/', variables('workerFunction').name)]",
-      "type": "Microsoft.Web/sites/functions",
-      "properties": {
-        "config": {
-          "bindings": [
-            {
-              "direction": "in",
-              "type": "eventHubTrigger",
-              "name": "eventHubBinding",
-              "path": "[variables('jobQueue').name]",
-              "consumerGroup": "[variables('jobQueue').lambdaConsumerGroup]",
-              "connection": "eventHubConnection"
-            }
-          ]
-        },
-        "files": {
-          "index.js": "module.exports = function (context, myQueueItem) { context.log('JavaScript queue trigger function processed work item', myQueueItem); context.done(); };"
-        }
       },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('workerFunction').containerName)]"
+      "resources": [
+        {
+          "apiVersion": "2015-08-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "properties": {
+            "RepoUrl": "[variables('workerFunction').repoUrl]",
+            "branch": "[variables('workerFunction').branch]",
+            "IsManualIntegration": true
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('workerFunction').containerName)]"
+          ]
+        }
       ]
     }
   ]
