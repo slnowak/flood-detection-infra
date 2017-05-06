@@ -1,0 +1,61 @@
+{
+  "builders": [
+    {
+      "type": "azure-arm",
+      "client_id": "changeme",
+      "client_secret": "changeme",
+      "object_id": "changeme",
+      "subscription_id": "changeme",
+      "tenant_id": "changeme",
+      "resource_group_name": "packerrgvm",
+      "storage_account": "packerrgvm",
+      "capture_container_name": "images",
+      "capture_name_prefix": "packer",
+      "os_type": "Linux",
+      "image_publisher": "Canonical",
+      "image_offer": "UbuntuServer",
+      "image_sku": "16.04.0-LTS",
+      "azure_tags": {
+        "dept": "engineering"
+      },
+      "location": "westeurope",
+      "vm_size": "Standard_A2"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sleep 30",
+        "sudo apt-get update",
+        "sudo apt-get install -y openjdk-8-jdk",
+        "sudo apt-get install -y maven",
+        "sudo apt-get install -y git"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo mkdir /opt/simulation-worker",
+        "cd /opt/simulation-worker",
+        "sudo git clone https://github.com/slnowak/flood-detection-worker-vm.git",
+        "sudo mvn -f flood-detection-worker-vm package",
+        "sudo cp flood-detection-worker-vm/target/azurevm-1.0-SNAPSHOT.jar .",
+        "sudo rm -rf flood-detection-worker-vm"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "simulation-worker.service",
+      "destination": "/tmp/simulation-worker.service"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo mv /tmp/simulation-worker.service /etc/systemd/system/simulation-worker.service",
+        "sudo chmod 644 /etc/systemd/system/simulation-worker.service",
+        "sudo systemctl enable simulation-worker"
+      ]
+    }
+  ]
+}
