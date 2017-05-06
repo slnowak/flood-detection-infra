@@ -2,11 +2,8 @@
   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "functionContainerName": {
-      "value": "lambda-workers"
-    },
-    "functionName": {
-      "value": "eventhub-lambda-worker"
+    "storageAccountType": {
+      "value": "Standard_LRS"
     }
   }
 }

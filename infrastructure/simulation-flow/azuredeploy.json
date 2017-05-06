@@ -2,19 +2,6 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "functionContainerName": {
-      "type": "string",
-      "metadata": {
-        "description": "The name of the function app that you wish to create."
-      }
-    },
-    "functionName": {
-      "type": "string",
-      "defaultValue": "httpJs",
-      "metadata": {
-        "description": "The name of the function."
-      }
-    },
     "storageAccountType": {
       "type": "string",
       "defaultValue": "Standard_LRS",
@@ -68,10 +55,17 @@
         "policyName": "[variables('anomalyDataEventHub').keyName]"
       }
     },
-    "functionContainerName": "[parameters('functionContainerName')]",
-    "hostingPlanName": "[parameters('functionContainerName')]",
     "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'azfunctions')]",
-    "storageAccountid": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]"
+    "workerFunction": {
+      "name": "function-worker",
+      "containerName": "function-workers",
+      "storageAccountName": "[variables('storageAccountName')]",
+      "storageAccountId": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+      "storageAccountType": "[parameters('storageAccountType')]",
+      "hostingPlanName": "function-workers",
+      "repoUrl": "https://github.com/slnowak/flood-detection-worker.git",
+      "branch": "master"
+    }
   },
   "resources": [
     {
@@ -213,20 +207,20 @@
     },
     {
       "type": "Microsoft.Storage/storageAccounts",
-      "name": "[variables('storageAccountName')]",
+      "name": "[variables('workerFunction').storageAccountName]",
       "apiVersion": "2015-06-15",
       "location": "[resourceGroup().location]",
       "properties": {
-        "accountType": "[parameters('storageAccountType')]"
+        "accountType": "[variables('workerFunction').storageAccountType]"
       }
     },
     {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2015-04-01",
-      "name": "[variables('hostingPlanName')]",
+      "name": "[variables('workerFunction').hostingPlanName]",
       "location": "[resourceGroup().location]",
       "properties": {
-        "name": "[variables('hostingPlanName')]",
+        "name": "[variables('workerFunction').hostingPlanName]",
         "computeMode": "Dynamic",
         "sku": "Dynamic"
       }
@@ -234,32 +228,32 @@
     {
       "apiVersion": "2015-08-01",
       "type": "Microsoft.Web/sites",
-      "name": "[variables('functionContainerName')]",
+      "name": "[variables('workerFunction').containerName]",
       "location": "[resourceGroup().location]",
       "kind": "functionapp",
       "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        "[resourceId('Microsoft.Web/serverfarms', variables('workerFunction').hostingPlanName)]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('workerFunction').storageAccountName)]"
       ],
       "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('workerFunction').hostingPlanName)]",
         "siteConfig": {
           "appSettings": [
             {
               "name": "AzureWebJobsDashboard",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('workerFunction').storageAccountName, ';AccountKey=', listKeys(variables('workerFunction').storageAccountId,'2015-05-01-preview').key1)]"
             },
             {
               "name": "AzureWebJobsStorage",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('workerFunction').storageAccountName, ';AccountKey=', listKeys(variables('workerFunction').storageAccountId,'2015-05-01-preview').key1)]"
             },
             {
               "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('workerFunction').storageAccountName, ';AccountKey=', listKeys(variables('workerFunction').storageAccountId,'2015-05-01-preview').key1)]"
             },
             {
               "name": "WEBSITE_CONTENTSHARE",
-              "value": "[toLower(variables('functionContainerName'))]"
+              "value": "[toLower(variables('workerFunction').containerName)]"
             },
             {
               "name": "FUNCTIONS_EXTENSION_VERSION",
@@ -275,29 +269,21 @@
             }
           ]
         }
-      }
-    },
-    {
-      "apiVersion": "2015-08-01",
-      "name": "[concat(parameters('functionContainerName'),'/', parameters('functionName'))]",
-      "type": "Microsoft.Web/sites/functions",
-      "properties": {
-        "config": {
-          "bindings": [{
-            "direction": "in",
-            "type": "eventHubTrigger",
-            "name": "myEventHubMessage",
-            "path": "[variables('anomalyDataEventHub').name]",
-            "consumerGroup": "[variables('anomalyDataEventHub').consumerGroup]",
-            "connection": "eventHubConnection"
-          }]
-        },
-        "files": {
-          "index.js": "module.exports = function (context, myQueueItem) { context.log('JavaScript queue trigger function processed work item', myQueueItem); context.done(); };"
-        }
       },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('functionContainerName'))]"
+      "resources": [
+          {
+            "apiVersion": "2015-08-01",
+            "name": "web",
+            "type": "sourcecontrols",
+            "properties": {
+              "RepoUrl": "[variables('workerFunction').repoUrl]",
+              "branch": "[variables('workerFunction').branch]",
+              "IsManualIntegration": true
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('workerFunction').containerName)]"
+            ]
+          }
       ]
     }
   ]
