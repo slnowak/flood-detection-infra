@@ -3,6 +3,7 @@ Description=SimulationWorker
 [Service]
 ExecStart=/usr/bin/java -jar /opt/simulation-worker/azurevm-1.0-SNAPSHOT.jar
 Type=simple
+EnvironmentFile=-/etc/environment
 User=root
 [Install]
 WantedBy=multi-user.target

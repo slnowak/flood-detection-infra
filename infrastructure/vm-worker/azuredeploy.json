@@ -117,13 +117,13 @@
         "storageProfile": {
           "osDisk": {
             "osType": "Linux",
-            "name": "packer-osDisk.20297f1f-d2e9-460e-8ad1-f3dbe0137ea4.vhd",
+            "name": "packer-osDisk.49359f62-5c49-44c1-aed8-4ea1613ab2e9.vhd",
             "createOption": "FromImage",
             "image": {
-              "uri": "https://packerrgvm.blob.core.windows.net/system/Microsoft.Compute/Images/images/packer-osDisk.20297f1f-d2e9-460e-8ad1-f3dbe0137ea4.vhd"
+              "uri": "https://packerrgvm.blob.core.windows.net/system/Microsoft.Compute/Images/images/packer-osDisk.49359f62-5c49-44c1-aed8-4ea1613ab2e9.vhd"
             },
             "vhd": {
-              "uri": "https://packerrgvm.blob.core.windows.net/vmcontainer4790dd7b-b270-467f-b334-f2bc8844f158/osDisk.4790dd7b-b270-467f-b334-f2bc8844f158.vhd"
+              "uri": "https://packerrgvm.blob.core.windows.net/vmcontainera1ba96d3-a593-44b9-8c71-1d345ef67a2d/osDisk.a1ba96d3-a593-44b9-8c71-1d345ef67a2d.vhd"
             },
             "caching": "ReadWrite"
           }
@@ -150,6 +150,24 @@
       "type": "Microsoft.Compute/virtualMachines",
       "location": "westeurope",
       "name": "[parameters('vmName')]"
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vmName'),'/', 'EnvironmentVariablesExtension')]",
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "commandToExecute": "echo 'FOO=bar baz' >> /etc/environment"
+        }
+      }
     }
   ]
 }
