@@ -56,6 +56,12 @@
         "sudo chmod 644 /etc/systemd/system/simulation-worker.service",
         "sudo systemctl enable simulation-worker"
       ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo /usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync"
+      ]
     }
   ]
 }

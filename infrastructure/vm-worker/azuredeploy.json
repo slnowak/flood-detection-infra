@@ -117,13 +117,13 @@
         "storageProfile": {
           "osDisk": {
             "osType": "Linux",
-            "name": "packer-osDisk.49359f62-5c49-44c1-aed8-4ea1613ab2e9.vhd",
+            "name": "packer-osDisk.cf0d03b2-a146-4667-8841-e0d7e23069b9.vhd",
             "createOption": "FromImage",
             "image": {
-              "uri": "https://packerrgvm.blob.core.windows.net/system/Microsoft.Compute/Images/images/packer-osDisk.49359f62-5c49-44c1-aed8-4ea1613ab2e9.vhd"
+              "uri": "https://packerrgvm.blob.core.windows.net/system/Microsoft.Compute/Images/images/packer-osDisk.cf0d03b2-a146-4667-8841-e0d7e23069b9.vhd"
             },
             "vhd": {
-              "uri": "https://packerrgvm.blob.core.windows.net/vmcontainera1ba96d3-a593-44b9-8c71-1d345ef67a2d/osDisk.a1ba96d3-a593-44b9-8c71-1d345ef67a2d.vhd"
+              "uri": "https://packerrgvm.blob.core.windows.net/vmcontainerbd77ff34-8840-4176-be2e-9b841a6fcaa4/osDisk.bd77ff34-8840-4176-be2e-9b841a6fcaa4.vhd"
             },
             "caching": "ReadWrite"
           }
