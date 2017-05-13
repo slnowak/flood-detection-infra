@@ -2,11 +2,11 @@
   "builders": [
     {
       "type": "azure-arm",
-      "client_id": "changeme",
-      "client_secret": "changeme",
-      "object_id": "changeme",
-      "subscription_id": "changeme",
-      "tenant_id": "changeme",
+      "client_id": "CHANGE_ME",
+      "client_secret": "CHANGE_ME",
+      "object_id": "CHANGE_ME",
+      "subscription_id": "CHANGE_ME",
+      "tenant_id": "CHANGE_ME",
       "resource_group_name": "packerrgvm",
       "storage_account": "packerrgvm",
       "capture_container_name": "images",

@@ -18,6 +18,8 @@
   },
   "variables": {
     "location": "[resourceGroup().location]",
+
+
     "sensorDataEventHub": {
       "name": "flood-sensors-hub",
       "namespace": "flood-detection-ns",
@@ -25,6 +27,8 @@
       "partitionCount": 2,
       "keyName": "RootManageSharedAccessKey"
     },
+
+
     "anomalyDataEventHub": {
       "name": "anomaly-data-hub",
       "eventHubName": "anomaly-data-hub",
@@ -33,6 +37,8 @@
       "partitionCount": 2,
       "keyName": "RootManageSharedAccessKey"
     },
+
+
     "anomalyDetectionStreamingJob": {
       "name": "anomaly-detection",
       "input": {
@@ -55,18 +61,54 @@
         "policyName": "[variables('anomalyDataEventHub').keyName]"
       }
     },
-    "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'azfunctions')]",
+
+
+    "functionStorageAccountName": "[concat(uniquestring(resourceGroup().id), 'azfunctions')]",
     "workerFunction": {
       "name": "function-worker",
       "containerName": "function-workers",
-      "storageAccountName": "[variables('storageAccountName')]",
-      "storageAccountId": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+      "storageAccountName": "[variables('functionStorageAccountName')]",
+      "storageAccountId": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('functionStorageAccountName'))]",
       "storageAccountType": "[parameters('storageAccountType')]",
       "hostingPlanName": "function-workers",
       "repoUrl": "https://github.com/slnowak/flood-detection-worker.git",
       "branch": "master"
+    },
+
+    "__virtualNetworkName": "workerVNET",
+    "__vnetID": "[resourceId('Microsoft.Network/virtualNetworks', variables('__virtualNetworkName'))]",
+    "__subnetName": "workerSubnet",
+    "__vmStorageAccountName": "[concat(uniquestring(resourceGroup().id), 'vmworker')]",
+    "workerVM": {
+      "network": {
+        "nicName": "workerVMNic",
+        "addressPrefix": "10.0.0.0/16",
+        "subnetName": "[variables('__subnetName')]",
+        "subnetPrefix": "10.0.0.0/24",
+        "publicIPAddressName": "workerPublicIP",
+        "publicIPAddressType": "Dynamic",
+        "virtualNetworkName": "[variables('__virtualNetworkName')]",
+        "vnetID": "[variables('__vnetID')]",
+        "subnetRef": "[concat(variables('__vnetID'),'/subnets/', variables('__subnetName'))]",
+        "dnsLabelPrefix": "vmworker"
+      },
+      "storage": {
+        "accountName": "[variables('__vmStorageAccountName')]",
+        "accountId": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('__vmStorageAccountName'))]",
+        "accountType": "Standard_LRS"
+      },
+      "machine": {
+        "name": "simvm",
+        "size": "Standard_A1",
+        "adminUserName": "simvm",
+        "adminPassword": "CHANGE_ME",
+        "imageName": "packer-osDisk.ff05ac8e-ebd3-450c-8456-9a2bb5962812.vhd",
+        "imageUri": "https://packerrgvm.blob.core.windows.net/system/Microsoft.Compute/Images/images/packer-osDisk.ff05ac8e-ebd3-450c-8456-9a2bb5962812.vhd",
+        "vhdUri": "https://packerrgvm.blob.core.windows.net/vmcontainera9a5d715-fbd9-4139-8616-c4ac5e31d8dc/osDisk.a9a5d715-fbd9-4139-8616-c4ac5e31d8dc.vhd"
+      }
     }
   },
+
   "resources": [
     {
       "apiVersion": "2015-08-01",
@@ -233,7 +275,8 @@
       "kind": "functionapp",
       "dependsOn": [
         "[resourceId('Microsoft.Web/serverfarms', variables('workerFunction').hostingPlanName)]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('workerFunction').storageAccountName)]"
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('workerFunction').storageAccountName)]",
+        "[resourceId('Microsoft.EventHub/Namespaces/', variables('anomalyDataEventHub').namespace)]"
       ],
       "properties": {
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('workerFunction').hostingPlanName)]",
@@ -271,19 +314,155 @@
         }
       },
       "resources": [
+        {
+          "apiVersion": "2015-08-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "properties": {
+            "RepoUrl": "[variables('workerFunction').repoUrl]",
+            "branch": "[variables('workerFunction').branch]",
+            "IsManualIntegration": true
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('workerFunction').containerName)]"
+          ]
+        }
+      ]
+    },
+
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('workerVM').storage.accountName]",
+      "apiVersion": "2017-06-01",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "[variables('workerVM').storage.accountType]"
+      },
+      "kind": "Storage",
+      "properties": {}
+    },
+    {
+      "apiVersion": "2017-04-01",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('workerVM').network.publicIPAddressName]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "[variables('workerVM').network.publicIPAddressType]",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('workerVM').network.dnsLabelPrefix]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2017-04-01",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[variables('workerVM').network.virtualNetworkName]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('workerVM').network.addressPrefix]"
+          ]
+        },
+        "subnets": [
           {
-            "apiVersion": "2015-08-01",
-            "name": "web",
-            "type": "sourcecontrols",
+            "name": "[variables('workerVM').network.subnetName]",
             "properties": {
-              "RepoUrl": "[variables('workerFunction').repoUrl]",
-              "branch": "[variables('workerFunction').branch]",
-              "IsManualIntegration": true
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', variables('workerFunction').containerName)]"
-            ]
+              "addressPrefix": "[variables('workerVM').network.subnetPrefix]"
+            }
           }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2017-04-01",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('workerVM').network.nicName]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses/', variables('workerVM').network.publicIPAddressName)]",
+        "[resourceId('Microsoft.Network/virtualNetworks/', variables('workerVM').network.virtualNetworkName)]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('workerVM').network.publicIPAddressName)]"
+              },
+              "subnet": {
+                "id": "[variables('workerVM').network.subnetRef]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2016-03-30",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('workerVM').machine.name]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('workerVM').machine.size]"
+        },
+        "storageProfile": {
+          "osDisk": {
+            "osType": "Linux",
+            "name": "[variables('workerVM').machine.imageName]",
+            "createOption": "FromImage",
+            "image": {
+              "uri": "[variables('workerVM').machine.imageUri]"
+            },
+            "vhd": {
+              "uri": "[variables('workerVM').machine.vhdUri]"
+            },
+            "caching": "ReadWrite"
+          }
+        },
+        "osProfile": {
+          "computerName": "[variables('workerVM').machine.name]",
+          "adminUsername": "[variables('workerVM').machine.adminUsername]",
+          "adminPassword": "[variables('workerVM').machine.adminPassword]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('workerVM').network.nicName)]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": false
+          }
+        },
+        "provisioningState": 0
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces/', variables('workerVM').network.nicName)]"
+      ]
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('workerVM').machine.name,'/', 'EnvironmentVariablesExtension')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "commandToExecute": "echo 'FOO=bar baz' >> /etc/environment"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/', variables('workerVM').machine.name)]",
+        "[resourceId('Microsoft.EventHub/Namespaces/', variables('anomalyDataEventHub').namespace)]"
       ]
     }
   ]
