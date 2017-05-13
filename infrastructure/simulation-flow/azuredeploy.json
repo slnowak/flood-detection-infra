@@ -102,9 +102,9 @@
         "size": "Standard_A1",
         "adminUserName": "simvm",
         "adminPassword": "CHANGE_ME",
-        "imageName": "packer-osDisk.ff05ac8e-ebd3-450c-8456-9a2bb5962812.vhd",
-        "imageUri": "https://packerrgvm.blob.core.windows.net/system/Microsoft.Compute/Images/images/packer-osDisk.ff05ac8e-ebd3-450c-8456-9a2bb5962812.vhd",
-        "vhdUri": "https://packerrgvm.blob.core.windows.net/vmcontainera9a5d715-fbd9-4139-8616-c4ac5e31d8dc/osDisk.a9a5d715-fbd9-4139-8616-c4ac5e31d8dc.vhd"
+        "imageName": "packer-osDisk.391ef51a-3044-4c92-ba37-4633b766ae61.vhd",
+        "imageUri": "https://packerrgvm.blob.core.windows.net/system/Microsoft.Compute/Images/images/packer-osDisk.391ef51a-3044-4c92-ba37-4633b766ae61.vhd",
+        "vhdUri": "https://packerrgvm.blob.core.windows.net/vmcontainer16b73b64-ff0f-43b8-b45c-8a635d667d49/osDisk.16b73b64-ff0f-43b8-b45c-8a635d667d49.vhd"
       }
     }
   },
@@ -457,7 +457,7 @@
         "typeHandlerVersion": "2.0",
         "autoUpgradeMinorVersion": true,
         "settings": {
-          "commandToExecute": "echo 'FOO=bar baz' >> /etc/environment"
+          "commandToExecute": "[concat('echo eventhub.saskey=', listKeys(resourceId('Microsoft.Eventhub/namespaces/authorizationRules', variables('anomalyDataEventHub').namespace, variables('anomalyDataEventHub').keyName), providers('Microsoft.Eventhub', 'namespaces').apiVersions[0]).primaryKey, ' >> /etc/environment', '&& echo storageaccount.name=', variables('workerVM').storage.accountName, ' >> /etc/environment', ' && echo storageaccount.key=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('workerVM').storage.accountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, ' >> /etc/environment')]"
         }
       },
       "dependsOn": [
