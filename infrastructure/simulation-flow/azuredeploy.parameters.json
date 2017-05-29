@@ -4,6 +4,27 @@
   "parameters": {
     "storageAccountType": {
       "value": "Standard_LRS"
+    },
+    "vmSku": {
+      "value": "Standard_A1"
+    },
+    "vmssName": {
+      "value": "CHANGE_ME_PLS"
+    },
+    "instanceCount": {
+      "value": 2
+    },
+    "adminUsername": {
+      "value": "azureuser"
+    },
+    "adminPassword": {
+      "value": "CHANGE_ME_PLS"
+    },
+    "customImageUri": {
+      "value": "https://packerrgvm.blob.core.windows.net/system/Microsoft.Compute/Images/images/packer-osDisk.391ef51a-3044-4c92-ba37-4633b766ae61.vhd"
+    },
+    "osType": {
+      "value": "Linux"
     }
   }
 }
